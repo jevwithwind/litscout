@@ -1,0 +1,46 @@
+# =============================================================================
+# litscout — .gitignore
+# =============================================================================
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+dist/
+build/
+*.egg
+.eggs/
+
+# Virtual environment
+.venv/
+venv/
+env/
+
+# Environment variables (NEVER commit)
+.env
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# litscout runtime
+temp/
+output/kept_papers/
+output/reports/
+output/manifest.json
+
+# Keep output directory structure
+!output/.gitkeep
+!output/kept_papers/.gitkeep
+!output/reports/.gitkeep
+
+# PDF files (don't commit papers)
+*.pdf
+
+# Logs
+*.log

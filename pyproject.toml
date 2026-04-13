@@ -1,0 +1,57 @@
+[build-system]
+requires = ["setuptools>=68.0", "setuptools-scm>=8.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "litscout"
+version = "0.1.0"
+description = "Automated literature search, screening, and prioritization pipeline powered by LLMs."
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.11"
+authors = [
+    {name = "litscout contributors"},
+]
+keywords = ["literature-review", "academic", "research", "llm", "screening"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering",
+    "Topic :: Text Processing",
+]
+dependencies = [
+    "aiohttp>=3.9",
+    "PyMuPDF>=1.24",
+    "tiktoken>=0.7",
+    "pyyaml>=6.0",
+    "python-dotenv>=1.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-asyncio>=0.23",
+    "ruff>=0.4",
+]
+
+[project.scripts]
+litscout = "litscout.main:cli"
+
+[project.urls]
+Homepage = "https://github.com/your-username/litscout"
+Repository = "https://github.com/your-username/litscout"
+Issues = "https://github.com/your-username/litscout/issues"
+
+[tool.setuptools.packages.find]
+include = ["litscout*"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "W"]
