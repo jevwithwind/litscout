@@ -145,22 +145,6 @@ def _resolve_env_vars(config: dict[str, Any]) -> dict[str, Any]:
     if "model_env" in api:
         api["model"] = os.getenv(api["model_env"], "")
 
-    # Resolve search settings
-    search = resolved.get("search", {})
-    s2 = search.get("semantic_scholar", {})
-    if "api_key_env" in s2:
-        s2["api_key"] = os.getenv(s2["api_key_env"], "")
-
-    openalex = search.get("openalex", {})
-    if "email_env" in openalex:
-        openalex["email"] = os.getenv(openalex["email_env"], "")
-
-    elsevier = search.get("elsevier", {})
-    if "api_key_env" in elsevier:
-        elsevier["api_key"] = os.getenv(elsevier["api_key_env"], "")
-    if "inst_token_env" in elsevier:
-        elsevier["inst_token"] = os.getenv(elsevier["inst_token_env"], "")
-
     return resolved
 
 
@@ -214,12 +198,3 @@ def _validate_config(config: dict[str, Any]) -> None:
     search_sources = [s for s in active_sources if s.get("role") == "search_and_pdf"]
     if not search_sources:
         logger.warning("No search sources available. Enable at least one source with role 'search_and_pdf' in input/settings.yaml")
-
-    # Log warnings for missing optional API keys
-    s2 = config.get("search", {}).get("semantic_scholar", {})
-    if not s2.get("api_key"):
-        logger.info("Semantic Scholar API key not set, using unauthenticated mode")
-
-    elsevier = config.get("search", {}).get("elsevier", {})
-    if not elsevier.get("api_key"):
-        logger.info("Elsevier API key not set, disabling Elsevier fallback")

@@ -157,7 +157,7 @@ class Screener:
         self,
         pdf_paths: list[dict[str, Any]],
         config: dict[str, Any],
-        research_angle_file: str = "prompts/research.md",
+        research_angle_file: str = "input/research.md",
     ) -> list[dict[str, Any]]:
         """Screen a list of papers.
 

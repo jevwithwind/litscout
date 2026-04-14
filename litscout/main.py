@@ -243,7 +243,7 @@ async def run_iteration(
     evaluations = await screener.screen_papers(
         pdf_paths=pdf_paths,
         config=config,
-        research_angle_file=config.get("paths", {}).get("prompt_file", "prompts/research.md"),
+        research_angle_file=config.get("paths", {}).get("research_file", "input/research.md"),
     )
     print(f"✓ Screened {len(evaluations)} papers")
 
@@ -444,123 +444,145 @@ async def main(config_path: str = "config.yaml") -> None:
             manifest_data = json.load(f)
         iteration = manifest_data.get("total_iterations", 0) + 1
 
-    while not shutdown_requested:
-        # Check max iterations
-        max_iterations = config.get("sufficiency", {}).get("max_iterations", 0)
-        if max_iterations > 0 and iteration > max_iterations:
-            print(f"Max iterations ({max_iterations}) reached")
-            break
+    try:
+        # Open sessions
+        await llm_client.__aenter__()
+        await scholar_client.__aenter__()
+        await pdf_fetcher.__aenter__()
 
-        print_iteration_header(iteration)
+        while not shutdown_requested:
+            # Check max iterations
+            max_iterations = config.get("sufficiency", {}).get("max_iterations", 0)
+            if max_iterations > 0 and iteration > max_iterations:
+                print(f"Max iterations ({max_iterations}) reached")
+                break
 
-        # 1. Generate queries
-        queries, gap_analysis = await query_generator.generate(
-            research_angle=research_angle,
-            manifest_papers=load_manifest(config),
-            previous_queries=all_queries,
-            gap_analysis=gaps[0] if gaps else None,
-            num_queries=config["search"].get("queries_per_iteration", 5),
-        )
-        print(f"✓ Generated {len(queries)} search queries")
+            print_iteration_header(iteration)
 
-        # 2. Search
-        candidates: list[PaperMetadata] = []
-        for query in queries:
-            results = await scholar_client.search(
-                query=query,
-                limit=config["search"].get("results_per_query", 20),
-                year_range=config["search"].get("year_range", 5),
+            # 1. Generate queries
+            queries, gap_analysis = await query_generator.generate(
+                research_angle=research_angle,
+                manifest_papers=load_manifest(config),
+                previous_queries=all_queries,
+                gap_analysis=gaps[0] if gaps else None,
+                num_queries=config["search"].get("queries_per_iteration", 5),
             )
-            new_results = [r for r in results if deduplicator.is_new(r)]
-            candidates.extend(new_results)
-            for r in results:
-                deduplicator.mark_seen(r)
+            print(f"✓ Generated {len(queries)} search queries")
 
-        print(f"✓ Found {len(candidates)} new candidates")
+            # 2. Search
+            candidates: list[PaperMetadata] = []
+            for query in queries:
+                results = await scholar_client.search(
+                    query=query,
+                    limit=config["search"].get("results_per_query", 20),
+                    year_range=config["search"].get("year_range", 5),
+                )
+                new_results = [r for r in results if deduplicator.is_new(r)]
+                candidates.extend(new_results)
+                for r in results:
+                    deduplicator.mark_seen(r)
 
-        if not candidates:
-            consecutive_empty += 1
-            print("⚠ No new candidates found. Consider broadening research angle.")
-            if consecutive_empty >= 3:
-                print("⚠ No new papers found for 3 iterations. Stopping.")
-                break
-            all_queries.extend(queries)
-            gaps = [gap_analysis] if gap_analysis else []
-            iteration += 1
-            continue
+            print(f"✓ Found {len(candidates)} new candidates")
 
-        consecutive_empty = 0
-
-        # 3. Download
-        create_temp(temp_dir)
-        downloads = await pdf_fetcher.fetch_pdfs(
-            candidates,
-            temp_dir,
-        )
-        successful = [d for d in downloads if d["success"]]
-        print(f"✓ Downloaded {len(successful)}/{len(candidates)} PDFs")
-
-        if not successful:
-            cleanup_temp(temp_dir)
-            all_queries.extend(queries)
-            gaps = [gap_analysis] if gap_analysis else []
-            iteration += 1
-            continue
-
-        # 4. Screen
-        pdf_paths = [
-            {"local_path": d["local_path"], "metadata": d["metadata"]}
-            for d in successful
-        ]
-        evaluations = await screener.screen_papers(
-            pdf_paths=pdf_paths,
-            config=config,
-            research_angle_file=research_angle_file,
-        )
-        print(f"✓ Screened {len(evaluations)} papers")
-
-        # 5. Filter and store
-        kept, discarded = filter_results(evaluations)
-        store_papers(
-            kept=kept,
-            discarded=discarded,
-            iteration=iteration,
-            config=config,
-        )
-        cleanup_temp(temp_dir)
-        print(f"✓ Kept {len(kept)}, discarded {len(discarded)}")
-
-        # 6. Sufficiency check
-        manifest = load_manifest(config)
-        total_kept = sum(1 for p in manifest if p.get("kept"))
-        target_kept = config.get("sufficiency", {}).get("target_kept_papers", 0)
-        print(f"✓ Total kept: {total_kept}/{target_kept} target")
-
-        result = await sufficiency_judge.check_sufficiency(
-            manifest=manifest,
-            config=config,
-            research_angle=research_angle,
-        )
-
-        if result["should_stop"]:
-            if config.get("sufficiency", {}).get("auto_stop", False):
-                print(f"✓ Auto-stopping: {result['reason']}")
-                break
-            else:
-                print(f"✓ Sufficiency reached: {result['reason']}")
-                user_input = input("Continue searching? [y/N]: ").strip().lower()
-                if user_input != "y":
+            if not candidates:
+                consecutive_empty += 1
+                print("⚠ No new candidates found. Consider broadening research angle.")
+                if consecutive_empty >= 3:
+                    print("⚠ No new papers found for 3 iterations. Stopping.")
                     break
+                all_queries.extend(queries)
+                gaps = [gap_analysis] if gap_analysis else []
+                iteration += 1
+                continue
 
-        all_queries.extend(queries)
-        gaps = result.get("gaps", [])
-        iteration += 1
+            consecutive_empty = 0
+
+            # 3. Download
+            create_temp(temp_dir)
+            downloads = await pdf_fetcher.fetch_pdfs(
+                candidates,
+                temp_dir,
+            )
+            successful = [d for d in downloads if d["success"]]
+            print(f"✓ Downloaded {len(successful)}/{len(candidates)} PDFs")
+
+            if not successful:
+                cleanup_temp(temp_dir)
+                all_queries.extend(queries)
+                gaps = [gap_analysis] if gap_analysis else []
+                iteration += 1
+                continue
+
+            # 4. Screen
+            pdf_paths = [
+                {"local_path": d["local_path"], "metadata": d["metadata"]}
+                for d in successful
+            ]
+            evaluations = await screener.screen_papers(
+                pdf_paths=pdf_paths,
+                config=config,
+                research_angle_file=research_angle_file,
+            )
+            print(f"✓ Screened {len(evaluations)} papers")
+
+            # 5. Filter and store
+            kept, discarded = filter_results(evaluations)
+            store_papers(
+                kept=kept,
+                discarded=discarded,
+                iteration=iteration,
+                config=config,
+            )
+            cleanup_temp(temp_dir)
+            print(f"✓ Kept {len(kept)}, discarded {len(discarded)}")
+
+            # 6. Sufficiency check
+            manifest = load_manifest(config)
+            total_kept = sum(1 for p in manifest if p.get("kept"))
+            target_kept = config.get("sufficiency", {}).get("target_kept_papers", 0)
+            print(f"✓ Total kept: {total_kept}/{target_kept} target")
+
+            result = await sufficiency_judge.check_sufficiency(
+                manifest=manifest,
+                config=config,
+                research_angle=research_angle,
+            )
+
+            if result["should_stop"]:
+                if config.get("sufficiency", {}).get("auto_stop", False):
+                    print(f"✓ Auto-stopping: {result['reason']}")
+                    break
+                else:
+                    print(f"✓ Sufficiency reached: {result['reason']}")
+                    user_input = input("Continue searching? [y/N]: ").strip().lower()
+                    if user_input != "y":
+                        break
+
+            all_queries.extend(queries)
+            gaps = result.get("gaps", [])
+            iteration += 1
+    finally:
+        # Close sessions
+        await llm_client.__aexit__(None, None, None)
+        await scholar_client.__aexit__(None, None, None)
+        await pdf_fetcher.__aexit__(None, None, None)
 
     # Final report
     elapsed = time.time() - start_time
     elapsed_str = f"{int(elapsed // 3600)}h {int((elapsed % 3600) // 60)}m {int(elapsed % 60)}s"
 
-    manifest = load_manifest(config)
+    # Load full manifest dict (not just the papers list)
+    if os.path.exists(manifest_file):
+        with open(manifest_file, "r", encoding="utf-8") as f:
+            manifest_data = json.load(f)
+    else:
+        manifest_data = {
+            "version": "0.1.0",
+            "papers": [],
+            "total_iterations": 0,
+            "queries_used": {},
+        }
+
     stats = get_manifest_stats(manifest_file)
 
     report_path = os.path.join(
@@ -579,7 +601,7 @@ async def main(config_path: str = "config.yaml") -> None:
     }
 
     write_report(
-        manifest=manifest,
+        manifest=manifest_data,
         research_angle=research_angle,
         run_metadata=run_metadata,
         output_path=report_path,

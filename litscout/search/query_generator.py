@@ -145,43 +145,12 @@ Respond with ONLY a JSON object in this exact format (no markdown fences, no pre
                 return queries, gap_analysis_result
 
             except json.JSONDecodeError as e:
-                logger.warning(
-                    "Failed to parse query generation response as JSON: %s. "
-                    "Raw response: %s",
-                    e,
-                    response[:200],
+                raise RuntimeError(
+                    f"LLM returned invalid JSON for query generation: {e}. "
+                    f"Raw response: {response[:200]}"
                 )
-                # Return fallback queries based on research angle keywords
-                return self._generate_fallback_queries(research_angle), ""
 
+        except RuntimeError:
+            raise
         except Exception as e:
-            logger.error("Query generation failed: %s", e)
-            return self._generate_fallback_queries(research_angle), ""
-
-    def _generate_fallback_queries(self, research_angle: str) -> list[str]:
-        """Generate fallback queries from research angle keywords."""
-        # Extract potential keywords from research angle
-        keywords = []
-        for line in research_angle.split("\n"):
-            line = line.strip()
-            if line and not line.startswith("#") and not line.startswith(">"):
-                # Simple keyword extraction: take words that are at least 4 chars
-                words = [w.strip().lower() for w in line.split() if len(w) >= 4]
-                keywords.extend(words)
-
-        # Create simple query combinations
-        queries = []
-        if len(keywords) >= 2:
-            queries.append(f"{keywords[0]} {keywords[1]}")
-        if len(keywords) >= 3:
-            queries.append(f"{keywords[0]} {keywords[2]}")
-        if len(keywords) >= 4:
-            queries.append(f"{keywords[1]} {keywords[3]}")
-
-        # Add some generic fallbacks
-        if len(queries) < 3:
-            queries.append("literature review")
-        if len(queries) < 3:
-            queries.append("survey paper")
-
-        return queries[:5]
+            raise RuntimeError(f"Query generation failed: {e}") from e

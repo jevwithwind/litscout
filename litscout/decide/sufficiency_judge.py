@@ -44,12 +44,7 @@ class SufficiencyJudge:
         high_relevance = [p for p in kept if p.get("relevance") == "high"]
         medium_relevance = [p for p in kept if p.get("relevance") == "medium"]
 
-        # Check max iterations
-        max_iterations = sufficiency_config.get("max_iterations", 0)
-        if max_iterations > 0:
-            current_iterations = config.get("current_iteration", 0)
-            if current_iterations >= max_iterations:
-                return True, f"Max iterations ({max_iterations}) reached"
+        # Max iterations check is handled in main.py loop
 
         # Check target kept papers
         target_kept = sufficiency_config.get("target_kept_papers", 0)

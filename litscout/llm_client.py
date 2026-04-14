@@ -25,8 +25,8 @@ class LLMClient:
         timeout: int = 120,
         max_retries: int = 3,
     ):
-        self.base_url = base_url.rstrip("/")
-        self.api_key = api_key
+        self.base_url = base_url.strip().rstrip("/")
+        self.api_key = api_key.strip()
         self.model = model
         self.max_tokens = max_tokens
         self.temperature = temperature

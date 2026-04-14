@@ -88,9 +88,10 @@ class ScholarClient:
         """Search OpenAlex API."""
         session = await self._get_session()
         base = "https://api.openalex.org/works"
+        year_max = datetime.now().year
         params = [
             f"search={self._encode_query(query)}",
-            f"filter=publication_year:>={year_min},open_access.is_oa:true",
+            f"filter=publication_year:{year_min}-{year_max},open_access.is_oa:true",
             f"per_page={limit}",
         ]
         email = credentials.get("email")

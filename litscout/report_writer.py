@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 
 
 def write_report(
-    manifest: list[dict[str, Any]],
+    manifest: dict[str, Any],
     research_angle: str,
     run_metadata: dict[str, Any],
     output_path: str,
@@ -18,7 +18,7 @@ def write_report(
     """Generate a comprehensive final Markdown report from manifest.
 
     Args:
-        manifest: List of paper entries from manifest.json.
+        manifest: Full manifest dict with 'papers', 'total_iterations', etc.
         research_angle: The contents of prompts/research.md.
         run_metadata: Dict with run statistics and metadata.
         output_path: Path to save the report.
@@ -41,7 +41,7 @@ def write_report(
 
 
 def _build_report(
-    manifest: list[dict[str, Any]],
+    manifest: dict[str, Any],
     research_angle: str,
     run_metadata: dict[str, Any],
 ) -> str:
