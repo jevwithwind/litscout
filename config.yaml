@@ -1,7 +1,9 @@
 # =============================================================================
-# litscout — Pipeline Configuration
+# litscout — Technical Configuration
 # =============================================================================
-# API keys and credentials belong in .env, not here.
+# Most users should edit input/settings.yaml instead of this file.
+# This file contains advanced settings for the pipeline internals.
+# =============================================================================
 
 # --- LLM settings (env var names, not actual keys) ---
 api:
@@ -12,46 +14,35 @@ api:
   temperature: 0.3
   max_concurrent_requests: 3
 
-# --- Academic search settings ---
+# --- Search tuning ---
 search:
-  sources:
-    - semantic_scholar
-    - openalex
-  queries_per_iteration: 5          # How many search queries the LLM generates per round
-  results_per_query: 20             # Max results fetched per search query
-  year_range: 5                     # Only consider papers from the last N years
-  open_access_only: false           # If true, skip papers without open-access PDFs
-  semantic_scholar:
-    api_key_env: S2_API_KEY
-  openalex:
-    email_env: OPENALEX_EMAIL
-  elsevier:
-    api_key_env: ELSEVIER_API_KEY
-    inst_token_env: ELSEVIER_INST_TOKEN
-    enabled: true                   # Set false to disable Elsevier fallback entirely
+  queries_per_iteration: 5
+  results_per_query: 20
+  year_range: 5
+  open_access_only: false
 
 # --- Download settings ---
 download:
-  concurrency: 5                    # Max simultaneous PDF downloads
-  timeout: 60                       # Seconds before a download times out
-  max_pdf_size_mb: 50               # Skip PDFs larger than this
+  concurrency: 5
+  timeout: 60
+  max_pdf_size_mb: 50
 
 # --- Screening settings ---
 screening:
-  batch_size: 10                    # Papers per LLM screening call
-  max_tokens_per_batch: 200000      # Token budget per batch (safety ceiling)
+  batch_size: 10
+  max_tokens_per_batch: 200000
 
-# --- Sufficiency / stopping settings ---
+# --- Sufficiency thresholds (advanced) ---
 sufficiency:
-  target_kept_papers: 20            # Pause when this many papers are kept (0 = no target)
-  min_high_relevance: 5             # Minimum high-relevance papers for sufficiency
-  min_medium_relevance: 8           # Minimum medium-relevance papers for sufficiency
-  max_iterations: 0                 # 0 = unlimited, runs until manually stopped
-  auto_stop: false                  # true = stop automatically; false = pause and ask user
+  min_high_relevance: 5
+  min_medium_relevance: 8
 
 # --- File paths ---
 paths:
-  prompt_file: prompts/research.md
+  input_dir: input
+  settings_file: input/settings.yaml
+  research_file: input/research.md
+  prompt_dir: prompts
   query_gen_prompt: prompts/query_gen.md
   screening_prompt: prompts/screening.md
   sufficiency_prompt: prompts/sufficiency.md

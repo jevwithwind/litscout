@@ -58,12 +58,54 @@ def setup_logging(log_file: str) -> None:
     )
 
 
-def print_header() -> None:
+def print_header(config: dict[str, Any]) -> None:
     """Print the litscout header."""
-    print("════════════════════════════════════════")
+    print("══════════════════════════════════════════════════")
     print(" litscout v0.1.0")
     print(" Automated Literature Search & Screening")
-    print("════════════════════════════════════════")
+    print("══════════════════════════════════════════════════")
+
+    # Get research angle file
+    research_file = config.get("paths", {}).get("research_file", "input/research.md")
+    print(f" Research angle : {research_file}")
+
+    # Get target papers and max iterations
+    target_papers = config.get("sufficiency", {}).get("target_kept_papers", 20)
+    max_iterations = config.get("sufficiency", {}).get("max_iterations", 0)
+    max_iter_str = "unlimited" if max_iterations == 0 else str(max_iterations)
+    print(f" Target papers  : {target_papers}")
+    print(f" Max iterations : {max_iter_str}")
+
+    # Get active sources
+    active_sources = config.get("active_sources", [])
+    source_strs = []
+    for source in active_sources:
+        name = source.get("name", "")
+        role = source.get("role", "")
+        role_str = "search+pdf" if role == "search_and_pdf" else "pdf-only"
+        source_strs.append(f"{name} ({role_str})")
+
+    if source_strs:
+        print(f" Active sources : {', '.join(source_strs)}")
+
+    # Check for skipped sources (enabled but missing credentials)
+    skipped_sources = []
+    sources_config = config.get("sources", {})
+    for source_name, source_config in sources_config.items():
+        if source_config.get("enabled", False):
+            # Check if credentials are missing
+            if source_name == "semantic_scholar" and not os.getenv("S2_API_KEY"):
+                skipped_sources.append(f"{source_name} (S2_API_KEY not set)")
+            elif source_name == "elsevier" and not os.getenv("ELSEVIER_API_KEY"):
+                skipped_sources.append(f"{source_name} (ELSEVIER_API_KEY not set)")
+            elif source_name == "pubmed" and not os.getenv("PUBMED_API_KEY"):
+                skipped_sources.append(f"{source_name} (PUBMED_API_KEY not set)")
+            elif source_name == "core" and not os.getenv("CORE_API_KEY"):
+                skipped_sources.append(f"{source_name} (CORE_API_KEY not set)")
+
+    if skipped_sources:
+        print(f" Skipped sources: {', '.join(skipped_sources)}")
+
     print()
 
 
@@ -282,10 +324,10 @@ async def main(config_path: str = "config.yaml") -> None:
     setup_logging(log_file)
 
     # Print header
-    print_header()
+    print_header(config)
 
     # Get research angle
-    research_angle_file = config.get("paths", {}).get("prompt_file", "prompts/research.md")
+    research_angle_file = config.get("paths", {}).get("research_file", "input/research.md")
     if os.path.exists(research_angle_file):
         with open(research_angle_file, "r", encoding="utf-8") as f:
             research_angle = f.read()
@@ -334,9 +376,7 @@ async def main(config_path: str = "config.yaml") -> None:
     )
 
     scholar_client = ScholarClient(
-        s2_api_key=config["search"]["semantic_scholar"].get("api_key"),
-        openalex_email=config["search"]["openalex"].get("email"),
-        sources=config["search"].get("sources", ["semantic_scholar", "openalex"]),
+        active_sources=config.get("active_sources", []),
     )
 
     query_generator = QueryGenerator(
@@ -345,10 +385,16 @@ async def main(config_path: str = "config.yaml") -> None:
         query_gen_prompt_file=config.get("paths", {}).get("query_gen_prompt", "prompts/query_gen.md"),
     )
 
+    # Get elsevier config from active sources
+    elsevier_config = next((s for s in config.get("active_sources", []) if s.get("name") == "elsevier"), {})
+    elsevier_enabled = elsevier_config.get("role") == "pdf_only"
+    elsevier_api_key = elsevier_config.get("credentials", {}).get("api_key", "")
+    elsevier_inst_token = elsevier_config.get("credentials", {}).get("inst_token", "")
+
     pdf_fetcher = PDFFetcher(
-        elsevier_api_key=config["search"]["elsevier"].get("api_key"),
-        elsevier_inst_token=config["search"]["elsevier"].get("inst_token"),
-        elsevier_enabled=config["search"]["elsevier"].get("enabled", True),
+        elsevier_api_key=elsevier_api_key,
+        elsevier_inst_token=elsevier_inst_token,
+        elsevier_enabled=elsevier_enabled,
         concurrency=config["download"].get("concurrency", 5),
         timeout=config["download"].get("timeout", 60),
         max_pdf_size_mb=config["download"].get("max_pdf_size_mb", 50),

@@ -1,7 +1,7 @@
 # Research Angle (Example)
 
 > This is a **template example** to show you how to structure your research prompt.
-> Replace this content with your own research angle in `research.md`.
+> Replace this content with your own research angle in `input/research.md`.
 
 ## My Research Focus
 I am investigating how retrieval-augmented generation (RAG) improves the factual accuracy of large language models in open-domain question answering. Specifically, I want to understand which retrieval strategies (dense, sparse, or hybrid) produce the most reliable context for generation, and how re-ranking affects end-to-end performance.

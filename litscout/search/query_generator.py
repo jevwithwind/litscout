@@ -16,7 +16,7 @@ class QueryGenerator:
     def __init__(
         self,
         llm_client: LLMClient,
-        research_angle_file: str = "prompts/research.md",
+        research_angle_file: str = "input/research.md",
         query_gen_prompt_file: str = "prompts/query_gen.md",
     ):
         self.llm_client = llm_client

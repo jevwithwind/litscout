@@ -11,7 +11,7 @@
 `litscout` is an automated literature discovery and screening pipeline for academic researchers. It uses AI to:
 
 1. **Generate smart search queries** based on your research angle
-2. **Search academic databases** (Semantic Scholar, OpenAlex) for candidate papers
+2. **Search academic databases** (Semantic Scholar, OpenAlex, arXiv, PubMed, CORE) for candidate papers
 3. **Download PDFs** (with Elsevier ScienceDirect API fallback for paywalled papers)
 4. **Screen papers using an LLM** for relevance to your research angle
 5. **Keep medium/high relevance papers**, discard the rest
@@ -40,9 +40,9 @@ flowchart TD
 ### Pipeline Flow
 
 1. **Query Generation**: The LLM analyzes your research angle and generates targeted search queries
-2. **Academic Search**: Papers are fetched from Semantic Scholar and OpenAlex APIs
+2. **Academic Search**: Papers are fetched from enabled sources (OpenAlex, Semantic Scholar, arXiv, PubMed, CORE)
 3. **Deduplication**: Papers are tracked by DOI to avoid duplicates across iterations
-4. **PDF Download**: Open-access PDFs are downloaded; Elsevier API is used as fallback
+4. **PDF Download**: Open-access PDFs are downloaded; Elsevier API is used as fallback for paywalled papers
 5. **LLM Screening**: Each paper is evaluated against your research angle
 6. **Relevance Filtering**: High/medium papers are kept; low papers are discarded
 7. **Sufficiency Check**: The LLM assesses if enough papers have been collected
@@ -81,26 +81,25 @@ cp .env.example .env
 
 See the [API Setup Guide](#api-setup-guide) for details on obtaining each key.
 
-### 5. Set Up Your Research Angle
+### 5. Configure Search Sources
 
-Edit `prompts/research.md` with your research focus:
+Copy `input/settings.example.yaml` to `input/settings.yaml` and enable your sources:
 
-```markdown
-# Research Angle
-
-## My Research Focus
-(Describe your research question and specific angles you're investigating)
-
-## My Data
-(Describe your dataset, methodology, or experimental setup)
-
-## What I'm Looking For
-- (Type of papers, methods, findings you need)
-- (Specific methodologies or frameworks)
-- (Particular datasets or benchmarks)
+```bash
+cp input/settings.example.yaml input/settings.yaml
+# Edit input/settings.yaml to enable your sources
 ```
 
-### 6. Run litscout
+### 6. Write Your Research Angle
+
+Copy `input/research.example.md` to `input/research.md` and write your research focus:
+
+```bash
+cp input/research.example.md input/research.md
+# Edit input/research.md with your research angle
+```
+
+### 7. Run litscout
 
 ```bash
 litscout
@@ -108,7 +107,7 @@ litscout
 python -m litscout.main
 ```
 
-### 7. Find Your Results
+### 8. Find Your Results
 
 After the pipeline completes, you'll find:
 
@@ -116,9 +115,60 @@ After the pipeline completes, you'll find:
 - **`output/reports/`**: Final Markdown reports
 - **`output/manifest.json`**: Running log of all papers processed
 
+## Project Structure
+
+```
+litscout/
+├── input/                          # ← YOUR INPUT GOES HERE
+│   ├── research.md                 #   Your research angle
+│   ├── research.example.md         #   Template for research.md
+│   ├── settings.yaml               #   Your source & target settings
+│   └── settings.example.yaml       #   Template for settings.yaml
+├── .env                            # ← YOUR API KEYS GO HERE
+├── config.yaml                     # Advanced technical settings (rarely need to edit)
+├── prompts/                        # LLM system prompts (don't edit unless you know what you're doing)
+├── litscout/                       # Source code
+└── output/                         # Results appear here
+```
+
+## Three Things to Configure
+
+```
+1. API keys      → .env
+2. Sources       → input/settings.yaml
+3. Research angle → input/research.md
+```
+
+## Configuring Search Sources
+
+Edit `input/settings.yaml` to enable the sources you have access to:
+
+| Source | Role | Key Required? | Coverage | Best For |
+|--------|------|---------------|----------|----------|
+| OpenAlex | Search + PDF | No (email optional) | 250M+ works, all disciplines | General academic research |
+| Semantic Scholar | Search + PDF | No (optional for speed) | 200M+ papers, AI-ranked | CS, biomedical, broad coverage |
+| Elsevier | PDF only | Yes (institutional) | Paywalled Elsevier journals | University-subscribed content |
+| arXiv | Search + PDF | No | 2.4M+ preprints | Physics, math, CS, quantitative biology |
+| PubMed | Search + PDF | No (optional for speed) | 36M+ citations | Biomedical and life sciences |
+| CORE | Search + PDF | Yes (free) | 300M+ metadata, 40M+ full texts | Open access aggregation |
+
 ## Configuration
 
-The pipeline is configured via `config.yaml`. Key settings:
+### User Settings (`input/settings.yaml`)
+
+This is the main configuration file for most users:
+
+| Setting | Description | Default |
+|---------|-------------|---------|
+| `target_papers` | Stop when this many papers are kept | 20 |
+| `max_iterations` | Max search-screen cycles (0 = unlimited) | 0 |
+| `auto_stop` | Auto-stop when target is hit | false |
+| `sources.*.enabled` | Enable/disable a source | false |
+| `sources.*.role` | `search_and_pdf` or `pdf_only` | - |
+
+### Technical Settings (`config.yaml`)
+
+Advanced settings for pipeline internals (rarely need to edit):
 
 | Setting | Description | Default |
 |---------|-------------|---------|
@@ -129,11 +179,6 @@ The pipeline is configured via `config.yaml`. Key settings:
 | `search.year_range` | Only papers from last N years | 5 |
 | `download.concurrency` | Max simultaneous downloads | 5 |
 | `screening.batch_size` | Papers per LLM screening call | 10 |
-| `sufficiency.target_kept_papers` | Stop when this many papers kept | 20 |
-| `sufficiency.min_high_relevance` | Min high-relevance papers | 5 |
-| `sufficiency.min_medium_relevance` | Min medium-relevance papers | 8 |
-| `sufficiency.max_iterations` | 0 = unlimited, otherwise max rounds | 0 |
-| `sufficiency.auto_stop` | Auto-stop when sufficient | false |
 
 ## API Setup Guide
 
@@ -146,14 +191,6 @@ Any OpenAI-compatible endpoint works. Default is Alibaba DashScope:
 - **Azure OpenAI**: Get your key from Azure Portal
 - **Ollama**: Run locally at `http://localhost:11434`
 
-### Semantic Scholar
-
-Free API with optional key for higher rate limits:
-
-- **Without key**: 10 requests/minute shared across all users
-- **With key**: 1 request/second guaranteed
-- **Get a key**: [Semantic Scholar API Key Request](https://www.semanticscholar.org/product/api#api-key)
-
 ### OpenAlex
 
 Free API, no key required but providing an email is polite:
@@ -162,6 +199,14 @@ Free API, no key required but providing an email is polite:
 - **Add email for polite pool**: [OpenAlex Documentation](https://docs.openalex.org/how-to-use-the-api/rate-limits-and-authentication)
 - **Format**: `OPENALEX_EMAIL=your_email@example.com`
 
+### Semantic Scholar
+
+Free API with optional key for higher rate limits:
+
+- **Without key**: 10 requests/minute shared across all users
+- **With key**: 1 request/second guaranteed
+- **Get a key**: [Semantic Scholar API Key Request](https://www.semanticscholar.org/product/api#api-key)
+
 ### Elsevier / ScienceDirect
 
 Optional API for paywalled paper access:
@@ -169,6 +214,25 @@ Optional API for paywalled paper access:
 - **Get API key**: [Elsevier Developer Portal](https://dev.elsevier.com/)
 - **Institutional token**: Email `datasupport@elsevier.com` from your university email
 - **On-campus/VPN**: API key alone may be sufficient
+
+### arXiv
+
+Free API, no key needed. Preprints in physics, math, CS, biology, economics, and more.
+
+### PubMed / NCBI
+
+Free API, no key required but optional key for higher rate limits:
+
+- **Without key**: 3 req/sec
+- **With key**: 10 req/sec
+- **Get key**: [NCBI Account Settings](https://www.ncbi.nlm.nih.gov/account/settings/)
+
+### CORE
+
+Free API key required (register at [CORE](https://core.ac.uk/services/api)):
+
+- World's largest open access aggregator: 300M+ metadata records, 40M+ full texts
+- Harvests from 10,000+ institutional repositories worldwide
 
 ## Output Format
 
@@ -181,49 +245,16 @@ The final report is a Markdown file with:
 5. **Coverage Analysis**: Gaps identified by the LLM
 6. **Search Queries Used**: All queries across all iterations
 
-Example report structure:
-
-```markdown
-# litscout Report
-**Generated**: 2026-04-13 10:30:00
-**Total iterations**: 3
-**Papers screened**: 67
-**Papers kept**: 18 (7 high, 11 medium)
-**Papers discarded**: 49
-
-## Research Angle
-> [your research angle text]
-
-## Summary Table
-| # | Paper | Year | Relevance | Why Relevant |
-|---|-------|------|-----------|--------------|
-| 1 | smith_2024_rag_survey.pdf | 2024 | High | Directly surveys RAG... |
-
-## Detailed Evaluations
-### 1. smith_2024_rag_survey.pdf
-- **Relevance rating:** High
-- **Why it's useful:** Directly surveys RAG architectures...
-- **Key pages to read:** 3, 7-9, 14
-- **Key findings:**
-  - Finding 1
-  - Finding 2
-  - Finding 3
-- **Methodology & data:** Benchmarks seven open-source RAG systems...
-```
-
 ## CLI Options
 
-```bash
-litscout [OPTIONS]
-
-Options:
-  --config PATH         Path to config file (default: config.yaml)
-  --continue            Ignore sufficiency, keep running until stopped
-  --stop                Run one more iteration then stop
-  --target-papers N     Override target kept papers
-  --max-iterations N    Override max iterations
-  --help                Show this message and exit
-```
+| Flag | Description | Overrides |
+|------|-------------|-----------|
+| `--config PATH` | Path to technical config | `config.yaml` |
+| `--target-papers N` | Target number of relevant papers | `input/settings.yaml → target_papers` |
+| `--max-iterations N` | Maximum search-screen cycles | `input/settings.yaml → max_iterations` |
+| `--continue` | Ignore sufficiency, keep running | — |
+| `--stop` | Run one more iteration then stop | — |
+| `--help` | Show help message and exit | — |
 
 Examples:
 
@@ -263,6 +294,9 @@ MIT License - see [LICENSE](LICENSE) for details.
 - **Semantic Scholar** (Allen Institute for AI) - Free academic paper search API
 - **OpenAlex** - Open bibliographic database
 - **Elsevier** - ScienceDirect API for paywalled paper access
+- **arXiv** - Open-access preprint repository
+- **PubMed / NCBI** - Biomedical literature database
+- **CORE** - Open access aggregator
 
 ## Contributing
 

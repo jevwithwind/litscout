@@ -44,3 +44,11 @@ output/manifest.json
 
 # Logs
 *.log
+
+# User input (don't commit personal research angle or API settings)
+input/research.md
+input/settings.yaml
+
+# Keep the template and example
+!input/research.example.md
+!input/settings.example.yaml
