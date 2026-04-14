@@ -33,6 +33,7 @@ temp/
 output/kept_papers/
 output/reports/
 output/manifest.json
+output/deduplicator.json
 
 # Keep output directory structure
 !output/.gitkeep

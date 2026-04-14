@@ -75,6 +75,7 @@ class Screener:
         batch: list[dict[str, Any]],
         research_angle: str,
         screening_prompt: str,
+        max_retries: int = 1,
     ) -> list[dict[str, Any]]:
         """Screen a batch of papers using the LLM.
 
@@ -82,9 +83,11 @@ class Screener:
             batch: List of paper dicts.
             research_angle: The user's research angle.
             screening_prompt: The system prompt for screening.
+            max_retries: Number of retries on timeout (default 1).
 
         Returns:
-            List of evaluation results.
+            List of evaluation results. Empty list if batch timed out after retries
+            (papers will be retried in a future iteration).
         """
         messages = build_messages(
             research_angle=research_angle,
@@ -92,52 +95,78 @@ class Screener:
             batch=batch,
         )
 
-        try:
-            response = await self.llm_client.complete(
-                messages, response_format="json"
-            )
-
-            # Parse JSON response
+        last_error = None
+        for attempt in range(max_retries + 1):
             try:
-                evaluations = json.loads(response)
+                response = await self.llm_client.complete(
+                    messages, response_format="json"
+                )
 
-                # Ensure we got a list
-                if not isinstance(evaluations, list):
+                # Parse JSON response
+                try:
+                    evaluations = json.loads(response)
+
+                    # Ensure we got a list
+                    if not isinstance(evaluations, list):
+                        logger.warning(
+                            "LLM response is not a list, treating as malformed"
+                        )
+                        return self._create_malformed_evaluations(batch)
+
+                    # Validate each evaluation
+                    validated = []
+                    for i, eval_result in enumerate(evaluations):
+                        if not isinstance(eval_result, dict):
+                            logger.warning(
+                                "Evaluation %d is not a dict, treating as low relevance",
+                                i,
+                            )
+                            validated.append(self._create_low_relevance(batch[i]))
+                        else:
+                            validated.append(eval_result)
+
+                    logger.info(
+                        "Screened %d papers in batch",
+                        len(validated),
+                    )
+                    return validated
+
+                except json.JSONDecodeError as e:
                     logger.warning(
-                        "LLM response is not a list, treating as malformed"
+                        "Failed to parse screening response as JSON: %s. "
+                        "Raw response: %s",
+                        e,
+                        response[:200],
                     )
                     return self._create_malformed_evaluations(batch)
 
-                # Validate each evaluation
-                validated = []
-                for i, eval_result in enumerate(evaluations):
-                    if not isinstance(eval_result, dict):
+            except RuntimeError as e:
+                if "timed out" in str(e).lower():
+                    last_error = e
+                    if attempt < max_retries:
                         logger.warning(
-                            "Evaluation %d is not a dict, treating as low relevance",
-                            i,
+                            "Batch screening timed out (attempt %d/%d), retrying...",
+                            attempt + 1,
+                            max_retries + 1,
                         )
-                        validated.append(self._create_low_relevance(batch[i]))
+                        continue
                     else:
-                        validated.append(eval_result)
+                        logger.warning(
+                            "Batch screening timed out after %d attempts. "
+                            "Skipping %d papers — they will be retried in a future iteration.",
+                            max_retries + 1,
+                            len(batch),
+                        )
+                        return []  # Return empty list so papers are not marked as seen
+                else:
+                    last_error = e
+                    break
+            except Exception as e:
+                last_error = e
+                break
 
-                logger.info(
-                    "Screened %d papers in batch",
-                    len(validated),
-                )
-                return validated
-
-            except json.JSONDecodeError as e:
-                logger.warning(
-                    "Failed to parse screening response as JSON: %s. "
-                    "Raw response: %s",
-                    e,
-                    response[:200],
-                )
-                return self._create_malformed_evaluations(batch)
-
-        except Exception as e:
-            logger.error("Batch screening failed: %s", e)
-            return self._create_malformed_evaluations(batch)
+        logger.error("Batch screening failed: %s", last_error)
+        return self._create_malformed_evaluations(batch)
 
     def _create_malformed_evaluations(
         self, batch: list[dict[str, Any]]

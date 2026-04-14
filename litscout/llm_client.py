@@ -22,7 +22,7 @@ class LLMClient:
         max_tokens: int = 16384,
         temperature: float = 0.3,
         max_concurrent_requests: int = 3,
-        timeout: int = 120,
+        timeout: int = 300,
         max_retries: int = 3,
     ):
         self.base_url = base_url.strip().rstrip("/")

@@ -27,7 +27,11 @@ class Deduplicator:
                 with open(self.state_file, "r", encoding="utf-8") as f:
                     data = json.load(f)
                     self.seen_dois = set(data.get("seen_dois", []))
-                    self.seen_paper_ids = data.get("seen_paper_ids", {})
+                    # Convert lists back to sets for each source
+                    raw_paper_ids = data.get("seen_paper_ids", {})
+                    self.seen_paper_ids = {
+                        source: set(ids) for source, ids in raw_paper_ids.items()
+                    }
                     logger.info(
                         "Loaded deduplicator state: %d seen DOIs, %d sources",
                         len(self.seen_dois),
@@ -50,7 +54,9 @@ class Deduplicator:
             os.makedirs(os.path.dirname(self.state_file), exist_ok=True)
             data = {
                 "seen_dois": list(self.seen_dois),
-                "seen_paper_ids": self.seen_paper_ids,
+                "seen_paper_ids": {
+                    source: list(ids) for source, ids in self.seen_paper_ids.items()
+                },
             }
             with open(self.state_file, "w", encoding="utf-8") as f:
                 json.dump(data, f, indent=2)
