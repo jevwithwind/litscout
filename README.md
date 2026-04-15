@@ -20,7 +20,7 @@
 
 ## Installation
 
-### From PyPI (coming soon)
+### From PyPI
 
 ```bash
 pip install litscout
@@ -29,7 +29,7 @@ pip install litscout
 ### From Source
 
 ```bash
-git clone https://github.com/your-username/litscout.git
+git clone https://github.com/jevwithwind/litscout.git
 cd litscout
 pip install -e .
 ```
