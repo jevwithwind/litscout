@@ -210,6 +210,29 @@ sources:
 | `--stop` | Run one more iteration then stop | — |
 | `--help` | Show help message and exit | — |
 
+## Clean Command
+
+Remove generated output and temporary files to reset the project:
+
+```bash
+python -m litscout.clean
+```
+
+This will show what would be deleted and ask for confirmation. To skip the prompt:
+
+```bash
+python -m litscout.clean --confirm
+```
+
+**What gets deleted:**
+- Everything in `output/` except `.gitkeep` (manifest.json, reports/, kept_papers/)
+- Everything in `temp/` if it exists
+
+**What is NOT touched:**
+- `input/` (your research angle and settings)
+- `prompts/` (LLM prompts)
+- `config.yaml`, `.env` (configuration files)
+
 ## API Setup Guide
 
 ### LLM (Required)
