@@ -20,6 +20,9 @@ env/
 # Environment variables (NEVER commit)
 .env
 
+# Test directories
+test_init/
+
 # IDE
 .vscode/
 .idea/

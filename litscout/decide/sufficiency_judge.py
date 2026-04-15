@@ -5,6 +5,7 @@ import logging
 from typing import Any
 
 from litscout.llm_client import LLMClient
+from litscout.resources import read_prompt
 
 logger = logging.getLogger(__name__)
 
@@ -22,6 +23,8 @@ class SufficiencyJudge:
 
     def _load_sufficiency_prompt(self) -> str:
         """Load the sufficiency checking prompt."""
+        if self.sufficiency_prompt_file == "prompts/sufficiency.md":
+            return read_prompt("sufficiency.md")
         with open(self.sufficiency_prompt_file, "r", encoding="utf-8") as f:
             return f.read()
 

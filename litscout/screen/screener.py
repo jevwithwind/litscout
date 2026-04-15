@@ -9,6 +9,7 @@ from typing import Any
 from litscout.batcher import create_batches
 from litscout.llm_client import LLMClient
 from litscout.pdf_reader import extract_pages
+from litscout.resources import read_prompt
 from litscout.screen.prompt_builder import build_messages, count_batch_tokens
 
 logger = logging.getLogger(__name__)
@@ -31,6 +32,8 @@ class Screener:
 
     def _load_screening_prompt(self) -> str:
         """Load the screening system prompt."""
+        if self.screening_prompt_file == "prompts/screening.md":
+            return read_prompt("screening.md")
         with open(self.screening_prompt_file, "r", encoding="utf-8") as f:
             return f.read()
 

@@ -18,99 +18,56 @@
 6. **Repeat until sufficient coverage** is achieved
 7. **Generate a final Markdown report** summarizing everything found
 
-The tool runs as a CLI application. It loops indefinitely until stopped by the user (Ctrl+C for graceful shutdown) or until configurable thresholds are met.
+## Installation
 
-## Project Structure
+### From PyPI (coming soon)
 
-```
-litscout/
-├── input/                          # ← YOUR INPUT GOES HERE
-│   ├── research.md                 #   Your research angle (gitignored)
-│   ├── research.example.md         #   Template for research.md
-│   ├── settings.yaml               #   Your source & target settings (gitignored)
-│   └── settings.example.yaml       #   Template for settings.yaml
-├── .env                            # ← YOUR API KEYS GO HERE (gitignored)
-├── .env.example                    #   Template for .env
-├── config.yaml                     #   Advanced technical settings (rarely edit)
-├── prompts/                        #   LLM system prompts
-│   ├── query_gen.md                #   Query generation system prompt
-│   ├── screening.md                #   Paper screening system prompt
-│   └── sufficiency.md              #   Sufficiency checking system prompt
-├── litscout/                       #   Source code
-│   ├── __init__.py
-│   ├── config.py                   #   Config loading & validation
-│   ├── main.py                     #   CLI entry point & orchestrator
-│   ├── llm_client.py               #   Async OpenAI-compatible API client
-│   ├── pdf_reader.py               #   PDF text extraction (PyMuPDF)
-│   ├── batcher.py                  #   Token-aware batching
-│   ├── report_writer.py            #   Final Markdown report generation
-│   ├── search/
-│   │   ├── scholar_client.py       #   Multi-source academic search (6 sources)
-│   │   ├── query_generator.py      #   LLM-powered query generation
-│   │   └── deduplicator.py         #   DOI/ID tracking across iterations
-│   ├── download/
-│   │   ├── pdf_fetcher.py          #   Async PDF downloads with Elsevier fallback
-│   │   └── temp_manager.py         #   Temp directory lifecycle
-│   ├── screen/
-│   │   ├── prompt_builder.py       #   Screening prompt assembly
-│   │   └── screener.py             #   Paper screening orchestrator
-│   └── decide/
-│       ├── relevance_filter.py     #   Keep/discard filtering
-│       ├── paper_store.py          #   Manifest updates & PDF copying
-│       └── sufficiency_judge.py    #   Continue/stop decision
-└── output/                         #   Results appear here (gitignored)
-    ├── kept_papers/                #   Downloaded PDFs of relevant papers
-    ├── reports/                    #   Final Markdown reports
-    └── manifest.json               #   Running log of all papers
+```bash
+pip install litscout
 ```
 
-## Three Things to Configure
-
-```
-1. API keys      → .env
-2. Sources       → input/settings.yaml
-3. Research angle → input/research.md
-```
-
-## Quick Start
-
-### 1. Clone and Install
+### From Source
 
 ```bash
 git clone https://github.com/your-username/litscout.git
 cd litscout
-python -m venv .venv
-source .venv/bin/activate  # Windows: .venv\Scripts\activate
 pip install -e .
 ```
+
+## Quick Start
+
+### 1. Initialize a Project
+
+```bash
+litscout init
+```
+
+This scaffolds a new litscout project in your current directory with all the necessary config files and directories.
 
 ### 2. Configure API Keys
 
 ```bash
-cp .env.example .env
-# Edit .env with your API keys (at minimum: LLM_API_KEY)
+# Edit .env with your API keys
+# At minimum: LLM_BASE_URL, LLM_API_KEY, LLM_MODEL
 ```
 
 ### 3. Configure Sources
 
 ```bash
-cp input/settings.example.yaml input/settings.yaml
 # Edit input/settings.yaml to enable your sources
+# At least one source with role 'search_and_pdf' must be enabled
 ```
 
 ### 4. Write Research Angle
 
 ```bash
-cp input/research.example.md input/research.md
 # Edit input/research.md with your research focus
 ```
 
-### 5. Run
+### 5. Run the Pipeline
 
 ```bash
-litscout
-# or
-python -m litscout.main
+litscout run
 ```
 
 ### 6. Check Results
@@ -120,6 +77,77 @@ ls output/kept_papers/   # Downloaded PDFs
 ls output/reports/       # Final Markdown reports
 cat output/manifest.json # Full log of all papers
 ```
+
+## CLI Commands
+
+| Command | Description |
+|---------|-------------|
+| `litscout init` | Scaffold a new litscout project directory |
+| `litscout run` | Run the literature search and screening pipeline |
+| `litscout report` | Regenerate the markdown report from existing manifest.json |
+| `litscout clean` | Clean output and temp directories |
+| `litscout status` | Show quick summary of current project state |
+| `litscout --help` | Show help message and exit |
+
+### `litscout init`
+
+Scaffolds a new litscout project in the current directory (or specified path):
+
+```bash
+litscout init              # Use current directory
+litscout init ./my-project # Use specified directory
+```
+
+Creates:
+- `input/research.md` — Your research angle
+- `input/settings.yaml` — Source and target settings
+- `.env` — API keys
+- `config.yaml` — Advanced technical settings
+- `output/`, `temp/` — Output and temp directories
+
+### `litscout run`
+
+Runs the full literature search and screening pipeline:
+
+```bash
+litscout run                    # Use default config.yaml
+litscout run --config my.yaml   # Use custom config path
+```
+
+### `litscout report`
+
+Regenerates the markdown report from an existing manifest.json without re-running the pipeline:
+
+```bash
+litscout report
+litscout report --config my.yaml
+```
+
+### `litscout clean`
+
+Cleans output and temp directories:
+
+```bash
+litscout clean           # Ask for confirmation
+litscout clean --confirm # Skip confirmation
+```
+
+### `litscout status`
+
+Shows a quick summary of the current project state:
+
+```bash
+litscout status
+litscout status --config my.yaml
+```
+
+Output includes:
+- Active sources and their roles
+- Target papers
+- Iterations run
+- Papers kept (high/medium breakdown)
+- Papers discarded
+- Last updated timestamp
 
 ## Configuring Search Sources
 
@@ -199,80 +227,36 @@ sources:
 | `sufficiency.min_high_relevance` | Min high-relevance papers | 5 |
 | `sufficiency.min_medium_relevance` | Min medium-relevance papers | 8 |
 
-## CLI Options
+## Adding New Sources
 
-| Flag | Description | Overrides |
-|------|-------------|-----------|
-| `--config PATH` | Path to technical config | `config.yaml` |
-| `--target-papers N` | Target number of relevant papers | `input/settings.yaml → target_papers` |
-| `--max-iterations N` | Maximum search-screen cycles | `input/settings.yaml → max_iterations` |
-| `--continue` | Ignore sufficiency, keep running | — |
-| `--stop` | Run one more iteration then stop | — |
-| `--help` | Show help message and exit | — |
+litscout uses a plugin-based source architecture. To add a new source:
 
-## Clean Command
+1. Create a new file in `litscout/sources/` (e.g., `my_source.py`)
+2. Subclass `ScholarSource` from `litscout.sources.base`
+3. Implement the required methods:
+   - `name()` — Return the source identifier
+   - `search(query, limit, year_min, credentials)` — Search for papers
+   - `fetch_pdf(paper, credentials, session)` — Fetch PDF content
+4. Register it in `litscout/sources/__init__.py`
 
-Remove generated output and temporary files to reset the project:
+Example:
 
-```bash
-python -m litscout.clean
+```python
+from litscout.sources.base import PaperMetadata, ScholarSource
+
+class MySource(ScholarSource):
+    @classmethod
+    def name(cls) -> str:
+        return "my_source"
+
+    async def search(self, query, limit, year_min, credentials):
+        # Implement search logic
+        return []
+
+    async def fetch_pdf(self, paper, credentials, session):
+        # Implement PDF fetch logic
+        return None
 ```
-
-This will show what would be deleted and ask for confirmation. To skip the prompt:
-
-```bash
-python -m litscout.clean --confirm
-```
-
-**What gets deleted:**
-- Everything in `output/` except `.gitkeep` (manifest.json, reports/, kept_papers/)
-- Everything in `temp/` if it exists
-
-**What is NOT touched:**
-- `input/` (your research angle and settings)
-- `prompts/` (LLM prompts)
-- `config.yaml`, `.env` (configuration files)
-
-## API Setup Guide
-
-### LLM (Required)
-
-Any OpenAI-compatible endpoint works. Default is Alibaba DashScope:
-
-- **DashScope**: Get your API key at [Alibaba Cloud](https://dashscope.console.aliyun.com/)
-- **OpenAI**: Get your API key at [OpenAI Platform](https://platform.openai.com/api-keys)
-- **Azure OpenAI**: Get your key from Azure Portal
-- **Ollama**: Run locally at `http://localhost:11434`
-
-### OpenAlex (Free, no key needed)
-
-- No key required. Provide email in `.env` for faster rate limits ("polite pool").
-- [Documentation](https://docs.openalex.org/how-to-use-the-api/rate-limits-and-authentication)
-
-### Semantic Scholar (Free, key optional)
-
-- Without key: shared rate limit. With key: 1 req/sec guaranteed.
-- [Get a key](https://www.semanticscholar.org/product/api#api-key)
-
-### Elsevier / ScienceDirect (Institutional)
-
-- **API key**: [Elsevier Developer Portal](https://dev.elsevier.com/) (sign up with university email)
-- **Institutional token**: Email `datasupport@elsevier.com` from your university email
-- On-campus/VPN: API key alone may be sufficient
-
-### arXiv (Free, no key needed)
-
-- No credentials required. Preprints in physics, math, CS, biology, economics.
-
-### PubMed / NCBI (Free, key optional)
-
-- Without key: 3 req/sec. With key: 10 req/sec.
-- [Get key](https://www.ncbi.nlm.nih.gov/account/settings/)
-
-### CORE (Free key required)
-
-- [Register for free API key](https://core.ac.uk/services/api)
-- World's largest open access aggregator: 300M+ metadata records, 40M+ full texts.
 
 ## Output Format
 
@@ -314,117 +298,3 @@ MIT License — see [LICENSE](LICENSE) for details.
 ## Contributing
 
 Contributions are welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for details.
-
----
-
-## Testing Checklist
-
-### 1. Verify `.env` is filled in correctly
-
-Required keys (must have values):
-- `LLM_BASE_URL` — e.g., `https://dashscope.aliyuncs.com/compatible-mode/v1`
-- `LLM_API_KEY` — your actual API key
-- `LLM_MODEL` — e.g., `qwen3.6-plus`
-
-Optional keys (fill in only for sources you enable):
-- `OPENALEX_EMAIL` — your email (recommended for OpenAlex)
-- `S2_API_KEY` — Semantic Scholar API key (optional)
-- `ELSEVIER_API_KEY` — Elsevier API key (required if elsevier enabled)
-- `ELSEVIER_INST_TOKEN` — Elsevier institutional token (optional)
-- `PUBMED_API_KEY` — PubMed API key (optional)
-- `CORE_API_KEY` — CORE API key (required if core enabled)
-
-### 2. Verify `input/settings.yaml` has correct source toggles
-
-- At least one source with `role: search_and_pdf` must be `enabled: true`
-- Sources with `role: pdf_only` (like Elsevier) are only used as fallback for PDF downloads
-- Make sure the source names match exactly: `openalex`, `semantic_scholar`, `elsevier`, `arxiv`, `pubmed`, `core`
-
-### 3. Verify `input/research.md` has a research angle written
-
-- The file must exist and contain actual research content (not template text)
-- It should describe your research focus, data, and what you're looking for
-
-### 4. Test LLM API key
-
-Run this one-liner to verify your LLM endpoint and key work:
-
-```bash
-python -c "
-import asyncio, aiohttp, os
-from dotenv import load_dotenv
-load_dotenv()
-async def test():
-    async with aiohttp.ClientSession() as s:
-        async with s.post(
-            os.getenv('LLM_BASE_URL').rstrip('/') + '/chat/completions',
-            headers={'Authorization': f'Bearer {os.getenv(\"LLM_API_KEY\")}', 'Content-Type': 'application/json'},
-            json={'model': os.getenv('LLM_MODEL'), 'messages': [{'role': 'user', 'content': 'Say hello'}], 'max_tokens': 10}
-        ) as r:
-            data = await r.json()
-            print(f'Status: {r.status}')
-            print(f'Response: {data.get(\"choices\", [{}])[0].get(\"message\", {}).get(\"content\", \"ERROR\")}')
-asyncio.run(test())
-"
-```
-
-Expected output: `Status: 200` and a response like "Hello!"
-
-### 5. Test Elsevier API (if enabled)
-
-```bash
-python -c "
-import os
-from dotenv import load_dotenv
-load_dotenv()
-key = os.getenv('ELSEVIER_API_KEY')
-if key:
-    print(f'Elsevier API key is set: {key[:8]}...')
-else:
-    print('Elsevier API key is NOT set')
-"
-```
-
-### 6. Run the pipeline
-
-```bash
-python -m litscout.main
-```
-
-Watch for:
-- Clean startup banner showing active sources
-- Query generation success
-- Search results from enabled sources
-- PDF download progress
-- Screening results
-- Sufficiency check output
-
-### 7. Check output after a successful run
-
-```bash
-# Check manifest exists and has entries
-cat output/manifest.json | python -m json.tool | head -30
-
-# Check kept papers directory has PDFs
-ls -la output/kept_papers/
-
-# Check reports directory has a report
-ls -la output/reports/
-
-# Check log file for any errors
-tail -50 output/litscout.log
-```
-
-### 8. Common errors and what they mean
-
-| Error | Meaning | Fix |
-|-------|---------|-----|
-| `LLM base_url not set` | `.env` missing or `LLM_BASE_URL` empty | Copy `.env.example` to `.env` and fill in values |
-| `input/settings.yaml not found` | User settings file missing | Copy `input/settings.example.yaml` to `input/settings.yaml` |
-| `Please write your research angle` | `input/research.md` is empty or still has template text | Write your actual research focus in the file |
-| `No search sources available` | No source with `role: search_and_pdf` is enabled | Enable at least one source in `input/settings.yaml` |
-| `Source 'X' is enabled but ... not set in .env` | API key missing for enabled source | Add the key to `.env` or disable the source |
-| `LLM API error (status=401)` | Wrong API key or wrong endpoint | Verify key and URL in `.env` |
-| `LLM API error (status=429)` | Rate limit exceeded | Wait and retry, or add API key for higher limits |
-| `Failed to parse ... as JSON` | LLM returned non-JSON response | Check model supports JSON output mode |
-| `Unclosed client session` | Session not properly closed | Fixed in latest version — update if you see this |

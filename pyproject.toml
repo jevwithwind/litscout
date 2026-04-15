@@ -4,15 +4,15 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "litscout"
-version = "0.1.0"
+dynamic = ["version"]
 description = "Automated literature search, screening, and prioritization pipeline powered by LLMs."
 readme = "README.md"
 license = {text = "MIT"}
 requires-python = ">=3.11"
 authors = [
-    {name = "litscout contributors"},
+    {name = "jevwithwind"},
 ]
-keywords = ["literature-review", "academic", "research", "llm", "screening"]
+keywords = ["literature-review", "academic", "research", "llm", "screening", "systematic-review"]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Science/Research",
@@ -42,12 +42,20 @@ dev = [
 litscout = "litscout.main:cli"
 
 [project.urls]
-Homepage = "https://github.com/your-username/litscout"
-Repository = "https://github.com/your-username/litscout"
-Issues = "https://github.com/your-username/litscout/issues"
+Homepage = "https://github.com/jevwithwind/litscout"
+Repository = "https://github.com/jevwithwind/litscout"
+Issues = "https://github.com/jevwithwind/litscout/issues"
 
 [tool.setuptools.packages.find]
 include = ["litscout*"]
+
+[tool.setuptools.package-data]
+litscout = [
+    "templates/*",
+    "prompts/*.md",
+]
+
+[tool.setuptools_scm]
 
 [tool.ruff]
 line-length = 100

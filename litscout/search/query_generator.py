@@ -6,6 +6,7 @@ import os
 from typing import Any
 
 from litscout.llm_client import LLMClient
+from litscout.resources import read_prompt
 
 logger = logging.getLogger(__name__)
 
@@ -28,6 +29,10 @@ class QueryGenerator:
         with open(path, "r", encoding="utf-8") as f:
             return f.read()
 
+    def _load_prompt(self, name: str) -> str:
+        """Load a prompt file, using bundled resource if not in cwd."""
+        return read_prompt(name)
+
     def _build_messages(
         self,
         research_angle: str,
@@ -48,7 +53,11 @@ class QueryGenerator:
         Returns:
             List of message dicts for the LLM.
         """
-        system_prompt = self._load_file(self.query_gen_prompt_file)
+        # Use bundled prompt if no custom path specified
+        if self.query_gen_prompt_file == "prompts/query_gen.md":
+            system_prompt = self._load_prompt("query_gen.md")
+        else:
+            system_prompt = self._load_file(self.query_gen_prompt_file)
 
         # Build context about already-found papers
         papers_context = ""

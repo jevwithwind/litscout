@@ -1,0 +1,74 @@
+# =============================================================================
+# litscout — User Settings Example
+# =============================================================================
+# Copy this file to input/settings.yaml and customize for your needs.
+# =============================================================================
+
+# ── How Many Papers to Collect ──────────────────────────────────────────────
+target_papers: 20          # Stop and ask when you've collected this many relevant papers
+max_iterations: 0          # Max search-screen cycles (0 = unlimited, runs until you stop)
+auto_stop: false           # true = stop automatically when target is hit
+                           # false = pause and ask you whether to continue
+
+# ── Scholarly Sources ───────────────────────────────────────────────────────
+# Enable the sources you have access to. You need at least ONE search source.
+# Each source has a role:
+#   search_and_pdf — can discover papers AND download PDFs
+#   pdf_only       — can only download PDFs (used as fallback for paywalled papers)
+#
+# Sources are tried top-to-bottom for PDF downloads, so put your best source first.
+# API keys go in .env (not here). If a source is enabled but its key is missing,
+# it will be skipped with a warning.
+# ────────────────────────────────────────────────────────────────────────────
+
+sources:
+
+  # ── Active Sources ──
+
+  openalex:
+    enabled: true
+    role: search_and_pdf
+    # Free. No API key needed. Provide your email in .env for faster rate limits.
+    # Covers 250M+ scholarly works across all disciplines.
+    # Docs: https://docs.openalex.org/
+
+  semantic_scholar:
+    enabled: false
+    role: search_and_pdf
+    # Free. Optional API key for guaranteed 1 req/sec rate limit.
+    # Covers 200M+ papers with AI-powered relevance ranking.
+    # Get key: https://www.semanticscholar.org/product/api#api-key
+
+  elsevier:
+    enabled: true
+    role: pdf_only
+    # Institutional access. Downloads paywalled papers your university subscribes to.
+    # Requires API key from https://dev.elsevier.com/ (sign up with university email).
+    # Optional institutional token for off-campus use (email datasupport@elsevier.com).
+
+  # ── Additional Sources (disabled by default) ──
+  # Enable any of these if they suit your research field.
+
+  arxiv:
+    enabled: false
+    role: search_and_pdf
+    # Free. No API key needed.
+    # Preprints in physics, math, CS, biology, economics, and more.
+    # All papers have freely downloadable PDFs.
+    # Docs: https://info.arxiv.org/help/api/index.html
+
+  pubmed:
+    enabled: false
+    role: search_and_pdf
+    # Free. No API key needed (optional key for higher rate limits).
+    # Biomedical and life sciences literature (36M+ citations).
+    # Uses NCBI E-utilities API.
+    # Docs: https://www.ncbi.nlm.nih.gov/books/NBK25497/
+
+  core:
+    enabled: false
+    role: search_and_pdf
+    # Free API key required (register at https://core.ac.uk/services/api).
+    # World's largest open access aggregator: 300M+ metadata records, 40M+ full texts.
+    # Harvests from 10,000+ institutional repositories worldwide.
+    # Docs: https://core.ac.uk/documentation/api

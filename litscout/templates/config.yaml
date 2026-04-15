@@ -1,0 +1,53 @@
+# =============================================================================
+# litscout — Technical Configuration
+# =============================================================================
+# Most users should edit input/settings.yaml instead of this file.
+# This file contains advanced settings for the pipeline internals.
+# =============================================================================
+
+# --- LLM settings (env var names, not actual keys) ---
+api:
+  base_url_env: LLM_BASE_URL
+  api_key_env: LLM_API_KEY
+  model_env: LLM_MODEL
+  max_tokens: 16384
+  temperature: 0.3
+  max_concurrent_requests: 3
+
+# --- Search tuning ---
+search:
+  queries_per_iteration: 5
+  results_per_query: 20
+  year_range: 5
+  open_access_only: false
+
+# --- Download settings ---
+download:
+  concurrency: 5
+  timeout: 60
+  max_pdf_size_mb: 50
+
+# --- Screening settings ---
+screening:
+  batch_size: 10
+  max_tokens_per_batch: 200000
+
+# --- Sufficiency thresholds (advanced) ---
+sufficiency:
+  min_high_relevance: 5
+  min_medium_relevance: 8
+
+# --- File paths ---
+paths:
+  input_dir: input
+  settings_file: input/settings.yaml
+  research_file: input/research.md
+  prompt_dir: prompts
+  query_gen_prompt: prompts/query_gen.md
+  screening_prompt: prompts/screening.md
+  sufficiency_prompt: prompts/sufficiency.md
+  output_dir: output
+  kept_papers_dir: output/kept_papers
+  reports_dir: output/reports
+  manifest_file: output/manifest.json
+  temp_dir: temp

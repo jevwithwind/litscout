@@ -24,12 +24,15 @@ def load_config(config_path: str = "config.yaml") -> dict[str, Any]:
         FileNotFoundError: If config.yaml or input/settings.yaml is not found.
         RuntimeError: If required settings are missing or invalid.
     """
-    # Load .env file
+    # Load .env file from current working directory (never bundled — it has secrets)
     load_dotenv()
 
     # Load technical config
     if not os.path.exists(config_path):
-        raise FileNotFoundError(f"Config file not found: {config_path}")
+        raise FileNotFoundError(
+            f"Config file not found: {config_path}\n"
+            f"Did you run `litscout init` first?"
+        )
 
     with open(config_path, "r", encoding="utf-8") as f:
         config = yaml.safe_load(f)
@@ -38,8 +41,8 @@ def load_config(config_path: str = "config.yaml") -> dict[str, Any]:
     settings_path = config["paths"]["settings_file"]
     if not os.path.exists(settings_path):
         raise FileNotFoundError(
-            f"input/settings.yaml not found. Run from the project root directory "
-            "or create the input/ folder."
+            f"Settings file not found: {settings_path}\n"
+            f"Did you run `litscout init` first?"
         )
 
     with open(settings_path, "r", encoding="utf-8") as f:
@@ -78,13 +81,16 @@ def _resolve_sources(sources: dict[str, Any]) -> list[dict[str, Any]]:
         "semantic_scholar": {"api_key_env": "S2_API_KEY"},
         "elsevier": {
             "api_key_env": "ELSEVIER_API_KEY",
-            "inst_token_env": "ELSEVIER_INST_TOKEN",
+            "inst_token_env": "ELSEVIER_INST_TOKEN",  # Optional
         },
         "arxiv": {},
         "pubmed": {"api_key_env": "PUBMED_API_KEY"},
         "core": {"api_key_env": "CORE_API_KEY"},
         "openalex": {},
     }
+
+    # Fields that are optional (don't skip source if missing)
+    optional_fields = {"ELSEVIER_INST_TOKEN"}
 
     for source_name, source_config in sources.items():
         if not source_config.get("enabled", False):
@@ -95,32 +101,43 @@ def _resolve_sources(sources: dict[str, Any]) -> list[dict[str, Any]]:
 
         # Resolve credentials
         credentials = {}
+        skip = False
         for field, env_var in mappings.items():
             value = os.getenv(env_var, "")
             if value:
                 credentials[field] = value
-            elif field.endswith("_env") or field.endswith("_token"):
+            elif env_var in optional_fields:
+                # Optional field, skip
+                continue
+            elif field.endswith("_env"):
                 # Required field is missing
                 logger.warning(
                     "Source '%s' is enabled but %s is not set in .env — skipping",
                     source_name,
                     env_var,
                 )
+                skip = True
                 break
-        else:
-            # All required credentials are present (or no credentials needed)
-            source_entry = {
-                "name": source_name,
-                "role": source_config.get("role", "search_and_pdf"),
-                "credentials": credentials,
-            }
-            active_sources.append(source_entry)
-            logger.debug("Source '%s' is active with role '%s'", source_name, source_config.get("role"))
+
+        if skip:
+            continue
+
+        # All required credentials are present (or no credentials needed)
+        source_entry = {
+            "name": source_name,
+            "role": source_config.get("role", "search_and_pdf"),
+            "credentials": credentials,
+        }
+        active_sources.append(source_entry)
+        logger.debug("Source '%s' is active with role '%s'", source_name, source_config.get("role"))
 
     # Check if at least one search-capable source is active
     search_sources = [s for s in active_sources if s["role"] == "search_and_pdf"]
     if not search_sources:
-        logger.warning("No search sources available. Enable at least one source with role 'search_and_pdf' in input/settings.yaml")
+        logger.warning(
+            "No search sources available. Enable at least one source with "
+            "role 'search_and_pdf' in input/settings.yaml"
+        )
 
     return active_sources
 
@@ -197,4 +214,7 @@ def _validate_config(config: dict[str, Any]) -> None:
     active_sources = config.get("active_sources", [])
     search_sources = [s for s in active_sources if s.get("role") == "search_and_pdf"]
     if not search_sources:
-        logger.warning("No search sources available. Enable at least one source with role 'search_and_pdf' in input/settings.yaml")
+        logger.warning(
+            "No search sources available. Enable at least one source with "
+            "role 'search_and_pdf' in input/settings.yaml"
+        )
