@@ -85,7 +85,7 @@ class PDFFetcher:
                         if size_mb > self.max_pdf_size_mb:
                             logger.warning(
                                 "Skipping %s: PDF size %.2f MB exceeds limit of %d MB",
-                                paper.title,
+                                paper.title or "Untitled",
                                 size_mb,
                                 self.max_pdf_size_mb,
                             )
@@ -108,7 +108,7 @@ class PDFFetcher:
                     if paper.doi:
                         filename = re.sub(r"[^\w]", "_", paper.doi) + ".pdf"
                     else:
-                        filename = re.sub(r"[^\w]", "_", paper.title[:50]) + ".pdf"
+                        filename = re.sub(r"[^\w]", "_", (paper.title or "Untitled")[:50]) + ".pdf"
 
                     local_path = os.path.join(temp_dir, filename)
 
@@ -118,19 +118,19 @@ class PDFFetcher:
 
                     logger.info(
                         "Downloaded PDF for '%s' from %s",
-                        paper.title[:50],
+                        (paper.title or "Untitled")[:50],
                         url[:50],
                     )
                     return local_path, True
 
         except asyncio.TimeoutError:
-            logger.warning("Timeout downloading PDF for %s", paper.title)
+            logger.warning("Timeout downloading PDF for %s", paper.title or "Untitled")
             return None, False
         except aiohttp.ClientError as e:
-            logger.warning("Failed to download PDF for %s: %s", paper.title, e)
+            logger.warning("Failed to download PDF for %s: %s", paper.title or "Untitled", e)
             return None, False
         except IOError as e:
-            logger.error("Failed to save PDF for %s: %s", paper.title, e)
+            logger.error("Failed to save PDF for %s: %s", paper.title or "Untitled", e)
             return None, False
 
     async def _fetch_from_elsevier(
@@ -174,7 +174,7 @@ class PDFFetcher:
 
                         logger.info(
                             "Downloaded PDF for '%s' from Elsevier",
-                            paper.title[:50],
+                            (paper.title or "Untitled")[:50],
                         )
                         return local_path, True
                     elif response.status == 404:
@@ -192,10 +192,10 @@ class PDFFetcher:
                         return None, False
 
         except asyncio.TimeoutError:
-            logger.warning("Timeout fetching Elsevier PDF for %s", paper.title)
+            logger.warning("Timeout fetching Elsevier PDF for %s", paper.title or "Untitled")
             return None, False
         except aiohttp.ClientError as e:
-            logger.debug("Elsevier API request failed for %s: %s", paper.title, e)
+            logger.debug("Elsevier API request failed for %s: %s", paper.title or "Untitled", e)
             return None, False
 
     async def fetch_pdf(
@@ -236,7 +236,7 @@ class PDFFetcher:
 
         logger.warning(
             "Could not download PDF for '%s' (no open-access URL, Elsevier fallback unavailable)",
-            paper.title[:50],
+            (paper.title or "Untitled")[:50],
         )
         return result
 
