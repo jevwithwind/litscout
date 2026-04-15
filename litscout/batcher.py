@@ -21,7 +21,7 @@ def count_tokens(text: str) -> int:
     Returns:
         Approximate token count.
     """
-    return len(_ENCODING.encode(text))
+    return len(_ENCODING.encode(text, disallowed_special=()))
 
 
 def create_batches(
